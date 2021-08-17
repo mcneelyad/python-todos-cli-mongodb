@@ -1,62 +1,42 @@
-import mysql.connector
-import os
-from dotenv import load_dotenv
+import pymongo 
 
-load_dotenv()
+def connect(url):
+    client = pymongo.MongoClient(url)
+    return client
 
-# connect to MySQL database
-def connect_db():
-    connection_open = False
-    try:
-        with mysql.connect(
-            host="localhost",
-            user="root",
-            password=os.getenv("DB_PASSWORD"),
-            database="python_todos"
-        ) as connection:
-            connection_open = True
-    except mysql.Error as e:
-        print(e)
-    return connection_open, connection
+# insert todo in database
+def insert(client, todo):
+    db = client.tododb
+    db.tododb.insert(todo)
 
-# connect to MySQL database and query all todos
-def get_all_todos():
-    connection_open, connection = connect_db()
-    if connection_open:
-        try:
-            with connection.cursor(prepared=True) as cursor:
-                query = "SELECT * FROM todos"
-                cursor.execute(query)
-                todos = cursor.fetchall()
-                return todos
-        except mysql.Error as e:
-            print(e)
-    return None
+def edit_todo(client, todo):
+    db = client.tododb
+    db.tododb.update({'_id': todo['_id']}, {'$set': todo})
 
-#connect to MySQL database and query todos by id
-def get_todo_by_id(id):
-    connection_open, connection = connect_db()
-    if connection_open:
-        try:
-            with connection.cursor(prepared=True) as cursor:
-                query = "SELECT * FROM todos WHERE id = %s"
-                cursor.execute(query, (id,))
-                todo = cursor.fetchone()
-                return todo
-        except mysql.Error as e:
-            print(e)
-    return None
+def delete_todo(client, todo):
+    db = client.tododb
+    db.tododb.remove({'_id': todo['_id']})
 
-#connect to MySQL database and insert a new todo
-def insert_todo(todo):
-    connection_open, connection = connect_db()
-    if connection_open:
-        try:
-            with connection.cursor(prepared=True) as cursor:
-                query = "INSERT INTO todos (title, description, status) VALUES (%s, %s, %s)"
-                cursor.execute(query, (todo['title'],))
-                connection.commit()
-                return True
-        except mysql.Error as e:
-            print(e)
-    return False
+def mark_todo_completed(client, todo):
+    db = client.tododb
+    db.tododb.update({'_id': todo['_id']}, {'$set': {'completed': True}})
+
+def get_todos(client):
+    db = client.tododb
+    todos = db.tododb.find({'completed': False})
+    return todos
+
+def get_todo(client, todo_id):
+    db = client.tododb
+    todo = db.tododb.find_one({'_id': todo_id})
+    return todo
+
+def get_todos_by_user(client, user_id):
+    db = client.tododb
+    todos = db.tododb.find({'user_id': user_id, 'completed': False})
+    return todos
+
+def get_todo_by_id(client, todo_id):
+    db = client.tododb
+    todo = db.tododb.find_one({'_id': todo_id})
+    return todo
